@@ -3,6 +3,7 @@ var http = require('http');
 var httpProxy = require('http-proxy');
 var traverse = require('traverse');
 var id = require('./id');
+var moment = require('moment');
 
 var colors = require('colors');
 colors.setTheme({
@@ -106,18 +107,19 @@ proxy.on('end', function (req, res, proxyRes) {
     }
 
     if (this.key == 'Balance' && this.isLeaf && item > 0) {
-      // Convert drops to XRP
-      regReplace["Balance: .*" + item + "[^,]*,?"] = "$& " + ("// " + item / 1000000 + " XRP").verbose;      
+      // Convert drops to XRP.  Note /*..*/ because not always followed by line break.
+      regReplace["Balance: .*" + item + "[^,]*,?"] = "$& " + ("/* " + formatValue(item / 1000000) + " XRP */").verbose;      
     }
     
     if (this.key == 'Flags' && item > 0) {
       // Should be a generic regexp to match all Flags lines, but color codes makes it trickier.
-      regReplace["Flags: .*" + item + "[^,]*,?"] = "$& " + ("// " + item.toString(2)).verbose;
+      regReplace["Flags: .*" + item + "[^,]*,?"] = "$& " + ("// 0b" + item.toString(2)).verbose + ' = ' + ('0x' + item.toString(16)).verbose; // hex or binary better?
     }
 
     if (this.key == 'date' && item > 0) {
+      var d = moment.unix(item + 946684800);
       // Should be a generic regexp to match all dates, but color codes makes it trickier.
-      regReplace["date: .*" + item + "[^,]*,?"] = '$& ' + ("// " + Date(item + 946684800)).verbose;
+      regReplace["date: .*" + item + "[^,]*,?"] = '$& ' + ("// " + d.fromNow() + ' -- ' + d.format('LLLL')).verbose; // Tricky to convert ripple date to javascript date!
     }
   });
   
@@ -132,10 +134,10 @@ proxy.on('end', function (req, res, proxyRes) {
         var name = id.getCache(this.node.issuer);
         if (name) {
           // TODO round to shorter number
-          this.node['__description__'] = this.node.value + ' ' + this.node.currency + ' @ ' + name;
+          this.node['__description__'] = formatValue(this.node.value) + ' ' + this.node.currency + ' @ ' + name;
         }
         else {
-          this.node['__description__'] = this.node.value + ' ' + this.node.currency;
+          this.node['__description__'] = formatValue(this.node.value) + ' ' + this.node.currency;
         }
       }
 
@@ -219,6 +221,12 @@ proxy.on('proxySocket', function (proxySocket) {
   proxySocket.on('data', hybiParseAndLogMessage);
 });
 
+
+// Misc utilities
+formatValue = function(value) {
+  var rounded = Math.round(value * 100) / 100;
+  return rounded;
+}
 
 
 console.log("listening on port 5050")
