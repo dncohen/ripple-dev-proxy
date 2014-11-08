@@ -19,9 +19,9 @@ colors.setTheme({
   error: 'red'
 });
 
-JSON.minify = JSON.minify || require("node-json-minify");
+//JSON.minify = JSON.minify || require("node-json-minify");
 
-var prettyjson = require('prettyjson');
+//var prettyjson = require('prettyjson');
 
 var cache = {};
 
@@ -39,15 +39,15 @@ var proxy = httpProxy.createProxyServer({secure: false});
 var server = http.createServer(function(req, res) {
   // You can define here your custom logic to handle the request
   // and then proxy the request.
-  
+
   var _write = res.write;
   res.rippleBuffer = '';
-  
+
   res.write = function (data) {
     //_write.call(res, data.toString().replace("Ruby", "nodejitsu"));
     console.log(data);
     res.rippleBuffer = res.rippleBuffer + data.toString();
-    
+
     _write.call(res, data);
   };
 
@@ -56,7 +56,7 @@ var server = http.createServer(function(req, res) {
     // @todo make configurable
     target: 'https://api.ripple.com'
   });
-  
+
 
   // not called?
   res.on('write', function(data) {
@@ -70,25 +70,25 @@ proxy.on('end', function (req, res, proxyRes) {
   if (!res.rippleBuffer) {
     return;
   }
-  
+
   var replace = {};
   var regReplace = {
   };
-  
+
   // Now buffer has entire JSON returned.
   var json = JSON.parse(res.rippleBuffer);
   //console.log(prettyjson.render(json));
   //console.log(util.inspect(json, {depth: null, colors: true}));
-  
+
   traverse(json).forEach(function (item) {
     // console.log(this.key + " : " + item);
 
     // @todo break this out into another file.
     if (this.key == 'base_fee_xrp') {
-      
+
       regReplace['base_fee_xrp: .*' + item + '.*,'] = '$& // ' + (item * 1000000) + ' drops';
     }
-    
+
     if (this.key == 'Account' || this.key == 'issuer' || this.key == 'Destination') {
       id.lookup(item);
 
@@ -108,9 +108,9 @@ proxy.on('end', function (req, res, proxyRes) {
 
     if (this.key == 'Balance' && this.isLeaf && item > 0) {
       // Convert drops to XRP.  Note /*..*/ because not always followed by line break.
-      regReplace["Balance: .*" + item + "[^,]*,?"] = "$& " + ("/* " + formatValue(item / 1000000) + " XRP */").verbose;      
+      regReplace["Balance: .*" + item + "[^,]*,?"] = "$& " + ("/* " + formatValue(item / 1000000) + " XRP */").verbose;
     }
-    
+
     if (this.key == 'Flags' && item > 0) {
       // Should be a generic regexp to match all Flags lines, but color codes makes it trickier.
       regReplace["Flags: .*" + item + "[^,]*,?"] = "$& " + ("// 0b" + item.toString(2)).verbose + ' = ' + ('0x' + item.toString(16)).verbose; // hex or binary better?
@@ -122,7 +122,7 @@ proxy.on('end', function (req, res, proxyRes) {
       regReplace["date: .*" + item + "[^,]*,?"] = '$& ' + ("// " + d.fromNow() + ' -- ' + d.format('LLLL')).verbose; // Tricky to convert ripple date to javascript date!
     }
   });
-  
+
   // @todo find a way to wait here for name lookups, etc.
   // If call setTimeout now, _write.call will come too late.
 
@@ -150,7 +150,7 @@ proxy.on('end', function (req, res, proxyRes) {
     });
 
     var output = util.inspect(json, {depth: null, colors: true});
-    
+
     // Simple string replacements
     traverse(replace).forEach(function (item) {
       debugger; // deprecated
@@ -163,7 +163,7 @@ proxy.on('end', function (req, res, proxyRes) {
         }
       }
     });
-    
+
     // Regular expression replacements.
     traverse(regReplace).forEach(function (item) {
       if (this.isLeaf) {
@@ -171,13 +171,13 @@ proxy.on('end', function (req, res, proxyRes) {
         output = output.replace(re, item);
       }
     });
-    
+
     console.log(); // TODO date and request.
     console.log(output);
     console.log();
-    
+
   }, 1000);
-  
+
 });
 
 
