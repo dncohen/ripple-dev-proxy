@@ -1,3 +1,5 @@
+var config = require('./config');
+
 var util = require('util');
 var http = require('http');
 var httpProxy = require('http-proxy');
@@ -36,7 +38,7 @@ var proxy = httpProxy.createProxyServer({secure: false});
 // a web request to the target passed in the options
 // also you can use `proxy.ws()` to proxy a websockets request
 //
-var server = http.createServer(function(req, res) {
+var restProxy = http.createServer(function(req, res) {
   // You can define here your custom logic to handle the request
   // and then proxy the request.
 
@@ -54,7 +56,7 @@ var server = http.createServer(function(req, res) {
 
   proxy.web(req, res, {
     // @todo make configurable
-    target: 'https://api.ripple.com'
+    target: config.rest.url
   });
 
 
@@ -63,6 +65,35 @@ var server = http.createServer(function(req, res) {
     debugger;
   });
 });
+
+var rpcProxy = http.createServer(function(req, res) {
+  // You can define here your custom logic to handle the request
+  // and then proxy the request.
+
+  var _write = res.write;
+  res.rippleBuffer = '';
+
+  res.write = function (data) {
+    //_write.call(res, data.toString().replace("Ruby", "nodejitsu"));
+    console.log(data);
+    res.rippleBuffer = res.rippleBuffer + data.toString();
+
+    _write.call(res, data);
+  };
+
+
+  proxy.web(req, res, {
+    // @todo make configurable
+    target: config.rpc.url
+  });
+
+
+  // not called?
+  res.on('write', function(data) {
+    debugger;
+  });
+});
+
 
 
 proxy.on('end', function (req, res, proxyRes) {
@@ -238,5 +269,6 @@ formatValue = function(value) {
 }
 
 
-console.log("listening on port 5050")
-server.listen(5050);
+console.log("listening on port " + config.rest.port)
+restProxy.listen(config.rest.port);
+rpcProxy.listen(config.rpc.port);
