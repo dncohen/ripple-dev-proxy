@@ -76,7 +76,13 @@ proxy.on('end', function (req, res, proxyRes) {
   };
 
   // Now buffer has entire JSON returned.
-  var json = JSON.parse(res.rippleBuffer);
+  var json;
+  try {
+    json = JSON.parse(res.rippleBuffer);
+  } catch (e) {
+    console.log("Failed to parse JSON response. Maybe API returned an error?");
+  }
+
   //console.log(prettyjson.render(json));
   //console.log(util.inspect(json, {depth: null, colors: true}));
 
@@ -89,7 +95,9 @@ proxy.on('end', function (req, res, proxyRes) {
       regReplace['base_fee_xrp: .*' + item + '.*,'] = '$& // ' + (item * 1000000) + ' drops';
     }
 
-    if (this.key == 'Account' || this.key == 'issuer' || this.key == 'Destination') {
+    if (this.key == 'Account' || this.key == 'account' ||
+	this.key == 'issuer' || this.key == 'Destination' ||
+	this.key == 'counterparty') {
       id.lookup(item);
 
       // Using .* to match color codes.
@@ -153,22 +161,23 @@ proxy.on('end', function (req, res, proxyRes) {
 
     // Simple string replacements
     traverse(replace).forEach(function (item) {
-      debugger; // deprecated
-      if (this.isLeaf) {
+      if (this.key && this.isLeaf) {
         if (typeof item == 'string') {
           output = output.replace(this.key, this.key + ' ' + item);
         }
         else {
           output = output.replace(this.key, item);
         }
+	debugger; // deprecated
       }
     });
 
     // Regular expression replacements.
     traverse(regReplace).forEach(function (item) {
-      if (this.isLeaf) {
+      if (this.key && this.isLeaf) {
         var re = new RegExp(this.key, 'g');
         output = output.replace(re, item);
+	debugger;
       }
     });
 
