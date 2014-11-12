@@ -269,6 +269,7 @@ formatValue = function(value) {
 }
 
 
-console.log("listening on port " + config.rest.port)
 restProxy.listen(config.rest.port);
+console.log("Proxy on port " + config.rest.port.toString().green.bold + " forwarding REST API to " + config.rest.url.red)
 rpcProxy.listen(config.rpc.port);
+console.log("Proxy on port " + config.rpc.port.toString().green.bold + " forwarding RPC API to " + config.rpc.url.red)
